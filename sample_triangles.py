@@ -57,9 +57,44 @@ print(len(a)/3.0)
 #     print('vertex coordinates:')
 #     for vertex in surface.select_vertices(triangle.vertex_indices):
 #         print((vertex.right, vertex.anterior, vertex.superior))
+import time
+count = 0
+from datetime import datetime
+start = datetime.now()
+
+for triangle_index, triangle in enumerate(surface.triangles):
+    for vertex in surface.select_vertices(triangle.vertex_indices):
+        count+=1
+        if count%10000 == 0:
+            print((vertex.right, vertex.anterior, vertex.superior))
+
+end = datetime.now()
+
+print('start',start.strftime("%H:%M:%S"))
+print('end',end.strftime("%H:%M:%S"))
 
 
 print(distPointToPlane(nptriangles,[0,1,0],-10))
 print('max',np.max(nptriangles,axis = 0))
 print('min',np.min(nptriangles,axis = 0))
 print('mean',np.mean(nptriangles,axis = 0))
+print('triangles',len(surface.triangles))
+
+from skspatial.objects import Plane
+pl = Plane.from_points(np.max(nptriangles,axis = 0), np.min(nptriangles,axis = 0), np.mean(nptriangles,axis = 0))
+
+distances = np.zeros(nptriangles.shape[0])
+for i in range(nptriangles.shape[0]):
+    distances[i] = pl.distance_point(nptriangles[i,:])
+
+print(pl)
+print(np.sum(distances<.100))
+
+points = nptriangles[distances<.100,:]
+
+import matplotlib.pyplot as plt
+
+fig = plt.figure()
+ax = plt.axes(projection='3d')
+ax.scatter(points[:,0],points[:,1],points[:,2])
+plt.savefig('fig.png',dpi=600)
