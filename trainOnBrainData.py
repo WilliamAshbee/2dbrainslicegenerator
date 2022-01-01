@@ -109,32 +109,39 @@ class ViTNet(torch.nn.Module):
         return self.model(x)*312.0
 
     
-v = ViTNet(img_size)
+v = ViTNet(img_size).cuda()
 
 
-optimizer = torch.optim.Adam(v.parameters(), lr=0.0001)
+optimizer = torch.optim.Adam(v.parameters(), lr=0.001)
 
-img = torch.randn(2, 3, img_size, img_size)
+img = torch.randn(2, 3, img_size, img_size).cuda()
 
 preds = v(img) # (1, 1000)
 print(preds)
-for x,y in dataloader:
-    optimizer.zero_grad()
-    print('data loader',x.shape,y.shape)
-    out = v(x)
-    out = out.reshape(y.shape)
-    loss = torch.mean((out-y)**2)
-    loss.backward()
-    optimizer.step()
-    print(loss)
+losses = []
+for epoch in range(100):
+    for x,y in dataloader:
+        x = x.cuda()
+        y = y.cuda()
+        optimizer.zero_grad()
+        #print('data loader',x.shape,y.shape)
+        out = v(x)
+        out = out.reshape(y.shape)
+        loss = torch.mean((out-y)**2)
+        loss.backward()
+        optimizer.step()
+        losses.append(loss.item())
+    print('epoch',epoch,'avg loss' ,np.array(losses).mean())
+    losses = []
     
 
 for x,y in dataloader:
-    
     fig = plt.figure()
     plt.imshow(x[0,0,:,:],extent=[0,311,259,0])
     plt.scatter(y[0,:,0],y[0,:,1],c="black", s= .01)
-    out = v(x).reshape(y.shape).detach().numpy()
+    x = x.cuda()
+    y = y.cuda()
+    out = v(x).reshape(y.shape).cpu().detach().numpy()
     
     plt.scatter(out[0,:,0],out[0,:,1],c="red", s= .01)
     
