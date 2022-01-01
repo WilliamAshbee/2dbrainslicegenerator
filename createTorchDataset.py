@@ -7,7 +7,7 @@ from torch.utils.data import Dataset, DataLoader
 import numpy as np
 import random
 from vit_pytorch import ViT
-
+import matplotlib.pyplot as plt
 transform = transforms.Compose([
      transforms.ConvertImageDtype(torch.float),
      transforms.Resize([32,32])
@@ -102,7 +102,7 @@ class ViTNet(torch.nn.Module):
         )
        self.model = torch.nn.Sequential(
             model,
-            torch.nn.Tanh()
+            torch.nn.Sigmoid()
         )
     
     def forward(self, x):
@@ -127,3 +127,21 @@ for x,y in dataloader:
     loss.backward()
     optimizer.step()
     print(loss)
+    
+
+for x,y in dataloader:
+    
+    fig = plt.figure()
+    plt.imshow(x[0,0,:,:],extent=[0,311,259,0])
+    plt.scatter(y[0,:,0],y[0,:,1],c="black", s= .01)
+    out = v(x).reshape(y.shape).detach().numpy()
+    
+    plt.scatter(out[0,:,0],out[0,:,1],c="red", s= .01)
+    
+    #plt.xlim(0, 256)
+    #plt.ylim(0, 256)
+
+    plt.savefig('traininghelloworld.png',#""".format(mmaxs,mmins,smaxs,smins).replace(' ','s')"""
+                dpi=100)
+    plt.clf()
+    break
