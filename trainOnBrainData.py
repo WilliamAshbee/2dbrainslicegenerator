@@ -21,7 +21,10 @@ class MyDataset(Dataset):
     def __getitem__(self, index):
         x = self.data[index]
         #print(x.shape)
+        #if x.shape[0]==1:
         x = x.unsqueeze(0).repeat(3,1,1)
+        #else:
+        #    x = x.unsqueeze(1).repeat(1,3,1,1)
         if transform:
             x = transform(x)
         #print(x.shape)
@@ -76,14 +79,22 @@ for i,j in enumerate(patients):
 #print(np.min(shapes))
 targets = np.array(targets)
 targets = torch.from_numpy(targets)
+train_targets = targets[:880,:]
+test_targets = targets[880:,:]
 imgs = np.array(imgs)
 imgs = torch.from_numpy(imgs)
+train_imgs = imgs[:880,:,:]
+test_imgs = imgs[880:,:,:]
 print(imgs.shape,targets.shape)
-dataset = MyDataset(imgs, targets,transform)
+train_data = MyDataset(train_imgs, train_targets,transform)
+test_data = MyDataset(test_imgs, test_targets,transform)
 
-batch_size = img_size = 32 if transform else 1
+batch_size =  32 if transform else 1
+img_size = 32 if transform else 1
 
-dataloader = DataLoader(dataset, batch_size=batch_size)
+train_dataloader = DataLoader(train_data, batch_size=batch_size)
+test_dataloader = DataLoader(test_data, batch_size=batch_size)
+dataset = None
 
 img_size = 32 if transform else 312
 class ViTNet(torch.nn.Module):
@@ -112,15 +123,16 @@ class ViTNet(torch.nn.Module):
 v = ViTNet(img_size).cuda()
 
 
-optimizer = torch.optim.Adam(v.parameters(), lr=0.001)
 
 img = torch.randn(2, 3, img_size, img_size).cuda()
 
 preds = v(img) # (1, 1000)
 print(preds)
 losses = []
-for epoch in range(100):
-    for x,y in dataloader:
+optimizer = torch.optim.Adam(v.parameters(), lr=0.001)
+
+for epoch in range(1000):
+    for x,y in train_dataloader:
         x = x.cuda()
         y = y.cuda()
         optimizer.zero_grad()
@@ -135,7 +147,7 @@ for epoch in range(100):
     losses = []
     
 
-for x,y in dataloader:
+for x,y in train_dataloader:
     fig = plt.figure()
     plt.imshow(x[0,0,:,:],extent=[0,311,259,0])
     plt.scatter(y[0,:,0],y[0,:,1],c="black", s= .01)
@@ -148,7 +160,84 @@ for x,y in dataloader:
     #plt.xlim(0, 256)
     #plt.ylim(0, 256)
 
-    plt.savefig('traininghelloworld.png',#""".format(mmaxs,mmins,smaxs,smins).replace(' ','s')"""
+    plt.savefig('trainsethelloworld1000.png',#""".format(mmaxs,mmins,smaxs,smins).replace(' ','s')"""
+                dpi=100)
+    plt.clf()
+    break
+
+for x,y in test_dataloader:
+    fig = plt.figure()
+    plt.imshow(x[0,0,:,:],extent=[0,311,259,0])
+    plt.scatter(y[0,:,0],y[0,:,1],c="black", s= .01)
+    x = x.cuda()
+    y = y.cuda()
+    out = v(x).reshape(y.shape).cpu().detach().numpy()
+    loss = np.mean((out-y.cpu().detach().numpy())**2)
+    print('test avg loss' ,loss.item())
+    
+    
+    plt.scatter(out[0,:,0],out[0,:,1],c="red", s= .01)
+    
+    #plt.xlim(0, 256)
+    #plt.ylim(0, 256)
+
+    plt.savefig('testsethelloworld1000.png',#""".format(mmaxs,mmins,smaxs,smins).replace(' ','s')"""
+                dpi=100)
+    plt.clf()
+    break
+
+optimizer = torch.optim.Adam(v.parameters(), lr=0.0001)
+
+for epoch in range(1000):
+    for x,y in train_dataloader:
+        x = x.cuda()
+        y = y.cuda()
+        optimizer.zero_grad()
+        #print('data loader',x.shape,y.shape)
+        out = v(x)
+        out = out.reshape(y.shape)
+        loss = torch.mean((out-y)**2)
+        loss.backward()
+        optimizer.step()
+        losses.append(loss.item())
+    print('epoch',epoch,'avg loss' ,np.array(losses).mean())
+    losses = []
+    
+
+for x,y in train_dataloader:
+    fig = plt.figure()
+    plt.imshow(x[0,0,:,:],extent=[0,311,259,0])
+    plt.scatter(y[0,:,0],y[0,:,1],c="black", s= .01)
+    x = x.cuda()
+    y = y.cuda()
+    out = v(x).reshape(y.shape).cpu().detach().numpy()
+    
+    plt.scatter(out[0,:,0],out[0,:,1],c="red", s= .01)
+    
+    #plt.xlim(0, 256)
+    #plt.ylim(0, 256)
+
+    plt.savefig('trainsethelloworld2000.png',#""".format(mmaxs,mmins,smaxs,smins).replace(' ','s')"""
+                dpi=100)
+    plt.clf()
+    break
+
+for x,y in test_dataloader:
+    fig = plt.figure()
+    plt.imshow(x[0,0,:,:],extent=[0,311,259,0])
+    plt.scatter(y[0,:,0],y[0,:,1],c="black", s= .01)
+    x = x.cuda()
+    y = y.cuda()
+    out = v(x).reshape(y.shape).cpu().detach().numpy()
+    loss = np.mean((out-y.cpu().detach().numpy())**2)
+    print('test avg loss' ,loss.item())
+    
+    plt.scatter(out[0,:,0],out[0,:,1],c="red", s= .01)
+    
+    #plt.xlim(0, 256)
+    #plt.ylim(0, 256)
+
+    plt.savefig('testsethelloworld2000.png',#""".format(mmaxs,mmins,smaxs,smins).replace(' ','s')"""
                 dpi=100)
     plt.clf()
     break
