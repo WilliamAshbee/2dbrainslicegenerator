@@ -62,8 +62,8 @@ path = '/home/users/washbee1/projects/2dbrainslicesgenerator/slices'
 
 import logging
 root_logger= logging.getLogger()
-root_logger.setLevel(logging.DEBUG) # or whatever
-handler = logging.FileHandler('/home/users/washbee1/projects/2dbrainslicesgenerator/logging/logchamfer.log', 'w', 'utf-8') # or whatever
+root_logger.setLevel(logging.INFO) # or whatever
+handler = logging.FileHandler('/home/users/washbee1/projects/2dbrainslicesgenerator/logging/chamf2dbd.log', 'w', 'utf-8') # or whatever
 handler.setFormatter(logging.Formatter('%(name)s %(message)s')) # or whatever
 root_logger.addHandler(handler)
 
@@ -170,7 +170,6 @@ side = 512
 #     except RuntimeError as e:
 #         model = None
 #         torch.cuda.empty_cache()
-#         print(mind,'has error')
 #         return None
 #     out = out.reshape(target.shape)#64, 1000, 2
 #     out = out
@@ -192,12 +191,11 @@ def chamfer_loss(input, target,mod=None,ret_out = False):
     try:
         out = mod(input)
         out = out.reshape(target.shape)
-        #print('dop',distOfPred(out.detach().clone()))
         
         loss,_ = chamfer_distance(out,target.float())
     except:
         import traceback
-        print(traceback.format_exc())
+        root_logger.info(traceback.format_exc())
         exit()
 
     if not ret_out:
@@ -208,12 +206,12 @@ def chamfer_loss(input, target,mod=None,ret_out = False):
     
 #for mind in range(10):
 mind = 2
-print('------------mind is ',mind)
+root_logger.info(('------------mind is ',mind))
 try:
     model = models.getModel(mind)
 except RuntimeError as e:
     torch.cuda.empty_cache()
-    print(mind,'has error')
+    root_logger.info((mind,'has error'))
     exit()
 
 if useGPU:
@@ -222,8 +220,8 @@ if useGPU:
 optimizer = torch.optim.Adam(model.parameters(),lr = 0.0001, betas = (.9,.999))#ideal
 
 
-print('begin')
-for epoch in range(1):
+epochs = 500
+for epoch in range(epochs):
     for x,y in loader_train:
         optimizer.zero_grad()
         if useGPU:
@@ -236,9 +234,8 @@ for epoch in range(1):
         optimizer.step()
     if loss_train == None:
         break
-    print('epoch',epoch,'loss',loss_train)
-print('a',type(model))
-epochs,img_size,patch_size,train_loss = -1.0,-1.0,-1.0,-1.0
+    root_logger.info(('epoch',epoch,'loss',loss_train))
+img_size,patch_size,train_loss = side, side//16, loss_train.item()
 for x,y in loader_train:
     fig = plt.figure()
     plt.imshow(x[0,0,:,:],extent=[0,1,1,0])
@@ -256,7 +253,6 @@ for x,y in loader_train:
                 dpi=600)
     plt.clf()
     break
-print('b',type(model))
 
 for x,y in loader_test:
     fig = plt.figure()
@@ -269,7 +265,7 @@ for x,y in loader_test:
     #out = out.reshape(y.shape)
     #loss = np.mean((out-y.cpu().detach().numpy())**2)
     loss,out = chamfer_loss(x,y,mod=model,ret_out = True)
-    print('c',type(model))
+    
     root_logger.info(('test avg loss' ,loss.item()))
     
     plt.scatter(out[0,:,0].cpu().detach().numpy(),out[0,:,1].cpu().detach().numpy(),c="red", s= .01)
@@ -285,7 +281,7 @@ for x,y in loader_test:
 
 if loss_train == None:
     exit()
-print('begin')
+
 # optimizer = torch.optim.Adam(model.parameters(),lr = 0.00001, betas = (.9,.999))#ideal
 
 # for epoch in range(1):
@@ -297,7 +293,6 @@ print('begin')
 #         loss_train = chamfer_loss(x,y,model=model)
 #         loss_train.backward()
 #         optimizer.step()
-#     print('epoch',epoch,'loss',loss_train)
 
 model = model.eval()
 
@@ -306,11 +301,11 @@ for x,y in loader_test:
         x = x.cuda()
         y = y.cuda()
     loss_test = chamfer_loss(x,y,mod=model)
-    print('validation loss',loss_test)
+    root_logger.info(('validation loss',loss_test))
     break
 
-torch.save(model.state_dict(), '/home/users/washbee1/projects/3d-synthd/models/model_{:10.8f}_{:10.8f}_{}.pth'.format(
-    loss_train,loss_test,mind))
+torch.save(model.state_dict(), '/home/users/washbee1/projects/3d-synthd/models/model_{:10.8f}_{:10.8f}_{}_{}.pth'.format(
+    loss_train,loss_test,mind,epochs))
 # DonutDataset.displayCanvas('vit-test-set-2d_{:10.8f}_{:10.8f}_{}_{}_{}_{}.png'.format(
 #       loss_train,loss_test,dim,mlp_dim,heads,depth),loader_test, model = model)
 # DonutDataset.displayCanvas('vit-test-set-2d_{:10.8f}_{:10.8f}_{}.png'.format(
