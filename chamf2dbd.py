@@ -185,9 +185,9 @@ def distOfPred(a):
             count+=1
     return total/float(count)
 
-def chamfer_loss(input, target,model=None,ret_out = False):
+def chamfer_loss(input, target,mod=None,ret_out = False):
     try:
-        out = model(input)
+        out = mod(input)
         out = out.reshape(target.shape)
         #print('dop',distOfPred(out.detach().clone()))
         
@@ -206,31 +206,27 @@ def chamfer_loss(input, target,model=None,ret_out = False):
 #for mind in range(10):
 mind = 2
 print('------------mind is ',mind)
-v = None
 try:
-    v = models.getModel(mind)
+    model = models.getModel(mind)
 except RuntimeError as e:
-    model = None
     torch.cuda.empty_cache()
     print(mind,'has error')
     exit()
 
 if useGPU:
-    model = v.cuda()
-else:
-    model = v
+    model = model.cuda()
 
 optimizer = torch.optim.Adam(model.parameters(),lr = 0.0001, betas = (.9,.999))#ideal
 
 
 print('begin')
-for epoch in range(10):
+for epoch in range(20):
     for x,y in loader_train:
         optimizer.zero_grad()
         if useGPU:
             x = x.cuda()
             y = y.cuda()
-        loss_train = chamfer_loss(x,y,model=model)
+        loss_train = chamfer_loss(x,y,mod=model)
         if loss_train == None:
             break    
         loss_train.backward()
@@ -238,6 +234,51 @@ for epoch in range(10):
     if loss_train == None:
         break
     print('epoch',epoch,'loss',loss_train)
+print('a',type(model))
+epochs,img_size,patch_size,train_loss = -1.0,-1.0,-1.0,-1.0
+for x,y in loader_train:
+    fig = plt.figure()
+    plt.imshow(x[0,0,:,:],extent=[0,311,259,0])
+    plt.scatter(y[0,:,0],y[0,:,1],c="black", s= .01)
+    x = x.cuda()
+    y = y.cuda()
+    out = model(x).reshape(y.shape).cpu().detach().numpy()
+    
+    plt.scatter(out[0,:,0],out[0,:,1],c="red", s= .01)
+    
+    #plt.xlim(0, 256)
+    #plt.ylim(0, 256)
+
+    plt.savefig('trainsetchamfer{}_{}_{}_{:.1f}.png'.format(epochs,img_size,patch_size,train_loss),#""".format(mmaxs,mmins,smaxs,smins).replace(' ','s')"""
+                dpi=600)
+    plt.clf()
+    break
+print('b',type(model))
+
+for x,y in loader_test:
+    fig = plt.figure()
+    plt.imshow(x[0,0,:,:],extent=[0,311,259,0])
+    plt.scatter(y[0,:,0],y[0,:,1],c="black", s= .01)
+    x = x.cuda()
+    y = y.cuda()
+    
+    #out = model(x)
+    #out = out.reshape(y.shape)
+    #loss = np.mean((out-y.cpu().detach().numpy())**2)
+    loss,out = chamfer_loss(x,y,mod=model,ret_out = True)
+    print('c',type(model))
+    root_logger.info(('test avg loss' ,loss.item()))
+    
+    plt.scatter(out[0,:,0].cpu().detach().numpy(),out[0,:,1].cpu().detach().numpy(),c="red", s= .01)
+    
+    #plt.xlim(0, 256)
+    #plt.ylim(0, 256)
+
+    plt.savefig('testsetchamfer{}_{}_{}_{:.1f}.png'.format(epochs,img_size,patch_size,loss.item()),#""".format(mmaxs,mmins,smaxs,smins).replace(' ','s')"""
+                dpi=600)
+    plt.clf()
+    break
+
 
 if loss_train == None:
     exit()
@@ -261,7 +302,7 @@ for x,y in loader_test:
     if useGPU:
         x = x.cuda()
         y = y.cuda()
-    loss_test = chamfer_loss(x,y,model=model)
+    loss_test = chamfer_loss(x,y,mod=model)
     print('validation loss',loss_test)
     break
 
@@ -273,6 +314,7 @@ torch.save(model.state_dict(), '/home/users/washbee1/projects/3d-synthd/models/m
 #     loss_train,loss_test,mind),loader_test, model = model)
 ###
 
-model = None
 torch.cuda.empty_cache()
 #time.sleep(10.0)
+
+            
