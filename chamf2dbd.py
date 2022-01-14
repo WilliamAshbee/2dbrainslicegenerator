@@ -41,15 +41,18 @@ class MyDataset(Dataset):
         self.targets = targets
     def __getitem__(self, index):
         x = self.data[index]
-        #root_logger.info(x.shape)
-        #if x.shape[0]==1:
         x = x.unsqueeze(0).repeat(3,1,1)
         #else:
         #    x = x.unsqueeze(1).repeat(1,3,1,1)
         if transform:
             x = transform(x)
-        #root_logger.info(x.shape)
         y = self.targets[index]
+        min0,min1,max0,max1 = bbox(x)
+        x = x[min0:(max0+1),min1:(max1+1)]
+        y[:,0] = (y[:,0]-torch.min(y[:,0]))/(torch.max(y[:,0])-torch.min(y[:,0]))
+        y[:,1] = (y[:,1]-torch.min(y[:,1]))/(torch.max(y[:,1])-torch.min(y[:,1]))
+        
+        x = F.resize(x, (side,side))
         #root_logger.info('x',x.shape)
         return x, y
     def __len__(self):
@@ -66,8 +69,8 @@ root_logger.addHandler(handler)
 
 global transform
 transform = transforms.Compose([
-     transforms.ConvertImageDtype(torch.float),
-     transforms.Resize([256,256])
+     transforms.ConvertImageDtype(torch.float)#,
+     #transforms.Resize([256,256])
  ])
 
 
@@ -135,7 +138,7 @@ def bbox(img):
 
 global numpoints
 numpoints = 1000
-side = 32
+side = 512
 
 
 
@@ -220,7 +223,7 @@ optimizer = torch.optim.Adam(model.parameters(),lr = 0.0001, betas = (.9,.999))#
 
 
 print('begin')
-for epoch in range(20):
+for epoch in range(1):
     for x,y in loader_train:
         optimizer.zero_grad()
         if useGPU:
@@ -238,7 +241,7 @@ print('a',type(model))
 epochs,img_size,patch_size,train_loss = -1.0,-1.0,-1.0,-1.0
 for x,y in loader_train:
     fig = plt.figure()
-    plt.imshow(x[0,0,:,:],extent=[0,311,259,0])
+    plt.imshow(x[0,0,:,:],extent=[0,1,1,0])
     plt.scatter(y[0,:,0],y[0,:,1],c="black", s= .01)
     x = x.cuda()
     y = y.cuda()
@@ -257,7 +260,7 @@ print('b',type(model))
 
 for x,y in loader_test:
     fig = plt.figure()
-    plt.imshow(x[0,0,:,:],extent=[0,311,259,0])
+    plt.imshow(x[0,0,:,:],extent=[0,1,1,0])
     plt.scatter(y[0,:,0],y[0,:,1],c="black", s= .01)
     x = x.cuda()
     y = y.cuda()

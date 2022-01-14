@@ -18,8 +18,9 @@ from nystrom_attention import Nystromformer
 
 
 def getModel(val = 0):
+    import torch
+        
     if val == 0:
-        import torch
         from vit_pytorch import ViT
 
         v = ViT(
@@ -56,8 +57,8 @@ def getModel(val = 0):
         ###################################
     elif val == 2:
         v = CaiT(
-            image_size = 256,
-            patch_size = 16,
+            image_size = 512,
+            patch_size = 32,
             num_classes = 5000,
             dim = 2048,
             depth = 12,             # depth of transformer for patch to patch attention only
@@ -214,7 +215,10 @@ def getModel(val = 0):
         #preds = v(img) # (1, 1000)
         #print('preds',preds.shape)
     
-    
+    v = torch.nn.Sequential(
+    v,
+    torch.nn.Sigmoid()
+    )
     return v
 
 
